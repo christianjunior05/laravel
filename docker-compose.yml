@@ -1,0 +1,47 @@
+services:
+    smsbiapp-nginx:
+        image: nginx:alpine
+        container_name: smsbiapp-nginx
+        restart: unless-stopped
+        depends_on:
+            - smsbiapp
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+
+    smsbiapp:
+        build:
+            args:
+                user: admin
+                uid: 1000
+            context: ./docker
+            dockerfile: Dockerfile
+        image: smsbiapp:latest
+        container_name: smsbiapp
+        restart: unless-stopped
+        depends_on:
+            - smsbiapp-redis
+        working_dir: /var/www/
+        volumes:
+            - ./:/var/www
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+    smsbiapp-scheduler:
+        image: smsbiapp:latest
+        container_name: smsbiapp-scheduler
+        restart: unless-stopped
+        depends_on:
+            - smsbiapp
+        volumes:
+            - ./:/var/www
+        entrypoint: sh -c "while true; do php /var/www/artisan schedule:run --verbose & sleep 60; done"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+volumes:
+    redis:
+
+networks:
+  default:
+    name: smsbiapp
